@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
 
     // Create a unique identifier for the shared memory (e.g., application name)
-    QSharedMemory sharedMemory("BackupRanger");
+    QSharedMemory sharedMemory("Backup-Ranger");
 
     // Try to attach to the shared memory
     if (!sharedMemory.create(1)) {

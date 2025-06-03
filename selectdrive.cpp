@@ -85,7 +85,7 @@ void selectdrive::addImageItem(const QString &imagePath, const QString &rootPath
 
 QString selectdrive::getUserDirectory()
 {
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "BCK", "BCK");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
     QString addin_path = QFileInfo(settings.fileName()).absolutePath();
     QStringList parts = addin_path.split("/", Qt::SkipEmptyParts);
     QString source = parts[0] + "/" + parts[1] + "/" + parts[2] + "/" ;

@@ -490,35 +490,35 @@ void MainWindow::on_pushSettings_clicked()
 }
 
 
-    bool MainWindow::checkRegistrationCode(const QString& userId, const QString& scode) {
-        if (userId.isEmpty()) {
-            log("Product unregisterd");
-            return false;
-        }
-
-        // Secret key (must match the PHP secret key)
-        const QString secretKey = "Backup-Ranger-ID";
-
-        // Convert to hex and take first 16 characters
-        QString shortHash = QString(QMessageAuthenticationCode::hash(userId.toUtf8(), secretKey.toUtf8(), QCryptographicHash::Sha256).toHex()).left(16);
-
-        // Format with dashes (e.g., XXXX-XXXX-XXXX-XXXX)
-        QString formattedCode;
-        for (int i = 0; i < shortHash.length(); i += 4) {
-            formattedCode += shortHash.mid(i, 4);
-            if (i < shortHash.length() - 4) {
-                formattedCode += "-";
-            }
-        }
-
-        QString scomputed = formattedCode.toUpper();
-
-        if(scomputed == scode) {
-            log("Product registerd to: " + userId);
-            return true;
-        }
+bool MainWindow::checkRegistrationCode(const QString& userId, const QString& scode) {
+    if (userId.isEmpty()) {
         log("Product unregisterd");
         return false;
+    }
+
+    // Secret key (must match the PHP secret key)
+    const QString secretKey = "Backup-Ranger-ID";
+
+    // Convert to hex and take first 16 characters
+    QString shortHash = QString(QMessageAuthenticationCode::hash(userId.toUtf8(), secretKey.toUtf8(), QCryptographicHash::Sha256).toHex()).left(16);
+
+    // Format with dashes (e.g., XXXX-XXXX-XXXX-XXXX)
+    QString formattedCode;
+    for (int i = 0; i < shortHash.length(); i += 4) {
+        formattedCode += shortHash.mid(i, 4);
+        if (i < shortHash.length() - 4) {
+            formattedCode += "-";
+        }
+    }
+
+    QString scomputed = formattedCode.toUpper();
+
+    if(scomputed == scode) {
+        log("Product registerd to: " + userId);
+        return true;
+    }
+    log("Product unregisterd");
+    return false;
 }
 
 
