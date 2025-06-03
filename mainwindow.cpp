@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QVBoxLayout *layout = new QVBoxLayout(ui->widget);
 
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "BCK", "BCK");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
 
     log("Welcome to Backup Ranger 1.55");
 
@@ -191,7 +191,7 @@ void MainWindow::on_pushStop_clicked() // STOP BUTTON
 
 QString MainWindow::getUserDirectory()
 {
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "BCK", "BCK");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
     QString addin_path = QFileInfo(settings.fileName()).absolutePath();
     QStringList parts = addin_path.split("/", Qt::SkipEmptyParts);
     QString source = parts[0] + "/" + parts[1] + "/" + parts[2] + "/" ;    
@@ -437,7 +437,7 @@ void MainWindow::on_pushDrive_clicked()
 
     if(drive != "") {
         m_drive = drive;
-        QSettings settings(QSettings::IniFormat, QSettings::UserScope, "BCK", "BCK");
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
         settings.setValue("General/Drive", m_drive);
         settings.sync();
 
@@ -449,7 +449,7 @@ void MainWindow::on_pushDrive_clicked()
         ui->pushBackup->setEnabled(true);
         ui->pushButton->setEnabled(true);
     }
-    else {
+    else if(m_drive == ""){
         ui->pushBackup->setEnabled(false);
         ui->pushButton->setEnabled(false);
     }
@@ -460,7 +460,7 @@ void MainWindow::on_pushSettings_clicked()
 {
     selectsettings *dialog = new selectsettings(this);
 
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "BCK", "BCK");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
 
     m_reg = settings.value("General/Registration").toString();
     m_email = settings.value("General/Email").toString();
@@ -479,7 +479,7 @@ void MainWindow::on_pushSettings_clicked()
     m_appData = dialog->getCheckBox();
     m_keep = dialog->getPast();
 
-    //QSettings settings(QSettings::IniFormat, QSettings::UserScope, "BCK", "BCK");
+    //QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
     settings.setValue("General/Email", m_email);
     settings.setValue("General/Registration", m_reg);
     settings.setValue("General/AppData", m_appData);
@@ -497,7 +497,7 @@ void MainWindow::on_pushSettings_clicked()
         }
 
         // Secret key (must match the PHP secret key)
-        const QString secretKey = "YourSecretKey123";
+        const QString secretKey = "Backup-Ranger-ID";
 
         // Convert to hex and take first 16 characters
         QString shortHash = QString(QMessageAuthenticationCode::hash(userId.toUtf8(), secretKey.toUtf8(), QCryptographicHash::Sha256).toHex()).left(16);
