@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <QThread>
 
+
 CopyWorker::CopyWorker(const QString &sourceDir, const QString &destDir, qint64 destSize, bool overwrite, bool backup, bool appData, int keep, QObject *parent)
     : QObject(parent), m_sourceDir(sourceDir), m_destDir(destDir), m_destSize(destSize), m_overwrite(overwrite), m_backup(backup), m_appData(appData), m_keep(keep), m_filesCopied(0) {
 }
@@ -94,19 +95,15 @@ void CopyWorker::startCopy() {
     if(success) {
       bool success_dt = copyDateTimeRecursively(m_sourceDir, m_destDir);
       emit copyFinished(success);
-        QDateTime dateTime2 = dateTime2.currentDateTime();
-        qint64 msDifference = dateTime2.toMSecsSinceEpoch() - dateTime1.toMSecsSinceEpoch();
 
-        // Calculate difference in seconds
-        qint64 secondsDifference = msDifference / 1000;
+      QDateTime dateTime2 = dateTime2.currentDateTime();
+      qint64 msDifference = dateTime2.toMSecsSinceEpoch() - dateTime1.toMSecsSinceEpoch();
 
-        // Convert to minutes with two decimal places
-        double minutesDifference = secondsDifference / 60.0;
-        QString formattedMinutes = QString::number(minutesDifference, 'f', 2);
-
-        qDebug() << "Minutes between" << dateTime1.toString() << "and" << dateTime2.toString() << ":" << formattedMinutes;
-
-        emit messageOccurred(QString("Elapsed time: %1 minutes").arg(formattedMinutes));
+      // Calculate difference in seconds
+      qint64 secondsDifference = msDifference / 1000;
+      double minutesDifference = secondsDifference / 60.0;
+      QString formattedMinutes = QString::number(minutesDifference, 'f', 2);
+      emit messageOccurred(QString("Elapsed time: %1 minutes").arg(formattedMinutes));
     }
     else {
         emit errorOccurred("Unknown error");
@@ -179,10 +176,9 @@ bool CopyWorker::deleteRecursively(QDir &dir)
     return success;
 }
 
-int CopyWorker::countFiles(const QString &dirPath) {
+void CopyWorker::countFiles(const QString &dirPath) {
     QDir dir(dirPath);
-    if (!dir.exists()) return 0;
-    qint64 totalSize = 0;
+    if (!dir.exists()) return;
 
     QFileInfoList entries;
 
@@ -196,9 +192,9 @@ int CopyWorker::countFiles(const QString &dirPath) {
         if (entry.isDir()) {
             emit verifyUpdated(m_totalSize);
 
-            totalSize += countFiles(entry.absoluteFilePath());
+            countFiles(entry.absoluteFilePath());
         } else if (entry.isFile()) {            
-            totalSize += entry.size();
+
             m_totalSize += entry.size();
             m_totalFiles++;
         }
@@ -210,7 +206,7 @@ int CopyWorker::countFiles(const QString &dirPath) {
         }
     }
 
-    return totalSize;
+    return;
 }
 
 void CopyWorker::requestStop() {

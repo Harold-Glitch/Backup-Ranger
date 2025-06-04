@@ -63,11 +63,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     checkRegistrationCode(m_email, m_reg);
 
-    if(m_reg == "" && m_keep == 0)
+    if(m_keep == 0)
     {
-        m_reg = "unregistered";
         m_appData = false;
         m_keep = 4;
+        settings.setValue("General/Keep", m_keep);
+        settings.sync();
     }
 
     m_progressBar = new CircleProgressBar(this);
@@ -79,44 +80,36 @@ MainWindow::MainWindow(QWidget *parent)
     m_progressBar->setTextColor(textColor);
 
     m_progressBar->setValue(0);
-
     layout->addWidget(m_progressBar);
 
     ui->pushStop->setEnabled(false);
-    ui->pushDrive->setEnabled(true);
-    ui->pushBackup->setEnabled(true);
-    ui->pushButton->setEnabled(true);
 
     QString source = getUserDirectory();
     log("User Directory: " + source);
 
-    bool drive_found = false;
     m_drive = settings.value("General/Drive").toString();
 
-    if(m_drive != "") {
+    QStringList parts = source.split("/", Qt::SkipEmptyParts);
+    QString sourcePath = parts[0] + "/";
 
-        QList<QStorageInfo> drives = QStorageInfo::mountedVolumes();
+    QList<QStorageInfo> drives = QStorageInfo::mountedVolumes();
+    bool bFound = false;
+    for (const QStorageInfo &storage : drives) {
+        if (storage.isValid() && storage.isReady()) {
+            if(m_drive == storage.rootPath() || (sourcePath != storage.rootPath() && m_drive == "" )) {
 
-        for (const QStorageInfo &storage : drives) {
-            if (storage.isValid() && storage.isReady()) {
-                if(m_drive == storage.rootPath() ) {
+                QString qsDrive = storage.rootPath().removeLast() + " " + sizeToText(storage.bytesFree()) + " free on " + sizeToText(storage.bytesTotal());
+                ui->label_5->setText(qsDrive);
+                log("Backup Drive: " + qsDrive);
+                ui->pushDrive->setIcon(QIcon(":/images/images/hdd.png"));
+                m_drive = storage.rootPath();
+                bFound = true;
 
-                    QString qsDrive = storage.rootPath().removeLast() + " " + sizeToText(storage.bytesFree()) + " free on " + sizeToText(storage.bytesTotal());
-                    ui->label_5->setText(qsDrive);
-                    log("Backup Drive: " + qsDrive);
-                    ui->pushDrive->setIcon(QIcon(":/images/images/hdd.png"));
-                    drive_found = true;
-
-                }
             }
-        }
-
-        if(drive_found == false) {
-            m_drive = "";
         }
     }
 
-    if(m_drive == "") {
+    if(m_drive == "" || bFound == false) {
         ui->pushBackup->setEnabled(false);
         ui->pushButton->setEnabled(false);
     }
@@ -469,6 +462,9 @@ void MainWindow::handleError(const QString &error) {
     ui->pushStop->setEnabled(false);
     ui->pushButton->setEnabled(true);
     ui->pushDrive->setEnabled(true);
+    ui->pushExit->setEnabled(true);
+    ui->pushPaste->setEnabled(true);
+    ui->pushSettings->setEnabled(true);
 
 }
 
@@ -529,7 +525,6 @@ void MainWindow::on_pushSettings_clicked()
     m_appData = dialog->getCheckBox();
     m_keep = dialog->getPast();
 
-    //QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
     settings.setValue("General/Email", m_email);
     settings.setValue("General/Registration", m_reg);
     settings.setValue("General/AppData", m_appData);

@@ -27,7 +27,7 @@ signals:
 private:
     bool copyDirectoryRecursively(const QString &sourceDir, const QString &destDir, int totalFiles);
     bool copyDateTimeRecursively(const QString &sourceDir, const QString &destDir);
-    int countFiles(const QString &dirPath);
+    void countFiles(const QString &dirPath);
     bool copyFileByChunks(const QString &sourcePath, const QString &destPath);
     bool deleteRecursively(QDir &dir);
     QString sizeToText(qint64 size);

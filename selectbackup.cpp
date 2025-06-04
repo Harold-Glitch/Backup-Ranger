@@ -205,6 +205,7 @@ void selectbackup::on_pushButton_clicked()
 
         ui->pushButton_2->setEnabled(false);
         ui->pushButton->setEnabled(false);
+        ui->pushOpen->setEnabled(false);
         m_selected = "";
         m_result = "";
     }
