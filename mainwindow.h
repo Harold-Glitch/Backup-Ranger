@@ -3,6 +3,13 @@
 
 #include <QMainWindow>
 #include <QThread>
+#include <QCoreApplication>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QVersionNumber>
 #include "copyworker.h"
 
 #include "circleprogressbar.h"
@@ -47,6 +54,8 @@ private slots:
     void on_pushPaste_clicked();
 
     void on_pushExit_clicked();
+
+    void onReplyFinished(QNetworkReply *reply);
 
 private:
     Ui::MainWindow *ui;

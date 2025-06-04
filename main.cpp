@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QSharedMemory>
 
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -16,6 +17,8 @@ int main(int argc, char *argv[])
         qDebug() << "Another instance is already running.";
         return 1; // Exit the application
     }
+
+    QCoreApplication::setApplicationVersion("1.55"); // Set your app's version
 
     MainWindow w;
     w.show();

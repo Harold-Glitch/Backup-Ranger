@@ -18,6 +18,14 @@
 #include "selectdrive.h"
 #include "selectsettings.h"
 #include <QFileDialog>
+#include <QCoreApplication>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QVersionNumber>
+#include <QDebug>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
@@ -25,6 +33,15 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+
+    QNetworkAccessManager *manager;
+
+    manager = new QNetworkAccessManager(this);
+    connect(manager, &QNetworkAccessManager::finished, this, &MainWindow::onReplyFinished);
+
+    QNetworkRequest request(QUrl("https://backupranger.com/version.json"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    manager->get(request);
 
     m_copyworker = nullptr;
     m_drive = "";
@@ -37,7 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QSettings settings(QSettings::IniFormat, QSettings::UserScope, "backup-ranger", "backup-ranger");
 
-    log("Welcome to Backup Ranger 1.55");
+    log("Welcome to Backup-Ranger " + QCoreApplication::applicationVersion());
 
     m_reg = settings.value("General/Registration").toString();
     m_email = settings.value("General/Email").toString();
@@ -118,6 +135,39 @@ MainWindow::~MainWindow()
         m_copythread->wait(100);
     }
 
+}
+
+void MainWindow::onReplyFinished(QNetworkReply *reply) {
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray data = reply->readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (!doc.isNull() && doc.isObject()) {
+            QJsonObject obj = doc.object();
+            QString latestVersion = obj["version"].toString();
+            QString currentVersion = QCoreApplication::applicationVersion(); // e.g., "2.1.2"
+
+            QVersionNumber current = QVersionNumber::fromString(currentVersion);
+            QVersionNumber latest = QVersionNumber::fromString(latestVersion);
+
+            if (latest > current) {
+
+                QMessageBox::information(nullptr, "Update Available",
+                    QString("A new version (%1) is available!\n\n%2\n\nDownload from: %3").arg(latestVersion).arg(obj["release_notes"].toString()).arg(obj["download_url"].toString()));
+
+                qDebug() << "New version available:" << latestVersion;
+                qDebug() << "Release notes:" << obj["release_notes"].toString();
+                qDebug() << "Download URL:" << obj["download_url"].toString();
+                // Optionally, show a dialog (see below)
+            } else {
+                qDebug() << "Your software is up to date.";
+            }
+        } else {
+            qDebug() << "Invalid JSON response.";
+        }
+    } else {
+        qDebug() << "Network error:" << reply->errorString();
+    }
+    reply->deleteLater();
 }
 
 void MainWindow::log(QString qsLog)
