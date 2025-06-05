@@ -8,6 +8,177 @@
 #include <windows.h>
 #include <QThread>
 
+#include <QCoreApplication>
+#include <QFile>
+#include <QFileInfo>
+#include <QDebug>
+#include <windows.h>
+#include <comdef.h>
+#include <vss.h>
+#include <vsbackup.h>
+
+#include <QCoreApplication>
+#include <QFile>
+#include <QFileInfo>
+#include <QDir>
+#include <QDebug>
+
+
+// RAII class for COM initialization
+class ComInitializer {
+public:
+    ComInitializer() {
+        HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+        if (FAILED(hr)) {
+            qDebug() << "COM initialization failed:" << _com_error(hr).ErrorMessage();
+        }
+    }
+    ~ComInitializer() { CoUninitialize(); }
+};
+
+bool createShadowCopy(const QString &sourcePath, const QString &destPath) {
+    ComInitializer comInit;
+    HRESULT hr;
+    IVssBackupComponents *pBackup = nullptr;
+    IVssAsync *pAsync = nullptr;
+    VSS_ID snapshotId = GUID_NULL;
+
+    // Validate source file
+    QFileInfo sourceInfo(sourcePath);
+    if (!sourceInfo.exists()) {
+        qDebug() << "Error: Source file does not exist:" << sourcePath;
+        return false;
+    }
+
+    // Ensure destination directory exists
+    QDir destDir(QFileInfo(destPath).absolutePath());
+    if (!destDir.exists() && !destDir.mkpath(".")) {
+        qDebug() << "Error: Cannot create destination directory:" << destDir.path();
+        return false;
+    }
+
+    // Create VSS backup components
+    hr = CreateVssBackupComponents(&pBackup);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to create VSS components:" << _com_error(hr).ErrorMessage();
+        return false;
+    }
+
+    hr = pBackup->InitializeForBackup();
+    if (FAILED(hr)) {
+        qDebug() << "Failed to initialize VSS:" << _com_error(hr).ErrorMessage();
+        pBackup->Release();
+        return false;
+    }
+
+    hr = pBackup->SetBackupState(true, true, VSS_BT_FULL, false);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to set backup state:" << _com_error(hr).ErrorMessage();
+        pBackup->Release();
+        return false;
+    }
+
+    hr = pBackup->StartSnapshotSet(&snapshotId);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to start snapshot set:" << _com_error(hr).ErrorMessage();
+        pBackup->Release();
+        return false;
+    }
+
+    QString volumePath = sourceInfo.absolutePath().left(2) + "\\";
+    BSTR bstrVolume = SysAllocString(volumePath.toStdWString().c_str());
+    if (!bstrVolume) {
+        qDebug() << "Failed to allocate volume path string.";
+        pBackup->Release();
+        return false;
+    }
+    hr = pBackup->AddToSnapshotSet(bstrVolume, GUID_NULL, &snapshotId);
+    SysFreeString(bstrVolume);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to add volume to snapshot:" ;
+        QString hexString = QString("0x%1").arg(static_cast<unsigned long>(hr), 8, 16, QChar('0'));
+        qDebug() << "HRESULT:" << hexString;
+        pBackup->Release();
+        return false;
+    }
+
+    hr = pBackup->PrepareForBackup(&pAsync);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to prepare for backup:" << _com_error(hr).ErrorMessage();
+        pBackup->Release();
+        return false;
+    }
+    hr = pAsync->Wait();
+
+    if (FAILED(hr)) {
+        qDebug() << "PrepareForBackup wait failed:" << _com_error(hr).ErrorMessage();
+        pAsync->Release();
+        pBackup->Release();
+        return false;
+    }
+
+
+    hr = pBackup->DoSnapshotSet(&pAsync);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to create snapshot:" << _com_error(hr).ErrorMessage();
+        pBackup->Release();
+        return false;
+    }
+
+    hr = pAsync->Wait();
+    if (FAILED(hr)) {
+        qDebug() << "DoSnapshotSet wait failed:" << _com_error(hr).ErrorMessage();
+        pAsync->Release();
+        pBackup->Release();
+        return false;
+    }
+
+    VSS_SNAPSHOT_PROP snapProp;
+    hr = pBackup->GetSnapshotProperties(snapshotId, &snapProp);
+    if (FAILED(hr)) {
+        qDebug() << "Failed to get snapshot properties:" << _com_error(hr).ErrorMessage();
+        pBackup->Release();
+        return false;
+    }
+
+    QString shadowPath = QString::fromWCharArray(snapProp.m_pwszSnapshotDeviceObject) +
+                         sourcePath.mid(2);
+
+    shadowPath = QDir::toNativeSeparators(shadowPath);
+    QString destPathN = QDir::toNativeSeparators(destPath);
+
+    qDebug() << "Shadow copy path:" << shadowPath;
+
+    BOOL result = CopyFile(
+        shadowPath.toStdWString().c_str(), // LPCWSTR lpExistingFileName
+        destPathN.toStdWString().c_str(),   // LPCWSTR lpNewFileName
+        false                       // BOOL bFailIfExists
+        );
+
+    if (!result) {
+        DWORD error = GetLastError();
+        QString hexString = QString("0x%1").arg(static_cast<unsigned long>(error), 8, 16, QChar('0'));
+        qDebug() << "CopyFile failed with error:" << hexString;
+        VssFreeSnapshotProperties(&snapProp);
+        pBackup->Release();
+        return false;
+    }
+    /*
+    QFile shadowFile(shadowPath);
+    if (!shadowFile.copy(destPathN)) {
+        qDebug() << "Failed to copy file from shadow path:" << shadowFile.errorString();
+        VssFreeSnapshotProperties(&snapProp);
+        pBackup->Release();
+        return false;
+    }
+*/
+    VssFreeSnapshotProperties(&snapProp);
+    pBackup->BackupComplete(nullptr);
+    pBackup->Release();
+
+    qDebug() << "File copied successfully to:" << destPathN;
+    return true;
+}
 
 CopyWorker::CopyWorker(const QString &sourceDir, const QString &destDir, qint64 destSize, bool overwrite, bool backup, bool appData, int keep, QObject *parent)
     : QObject(parent), m_sourceDir(sourceDir), m_destDir(destDir), m_destSize(destSize), m_overwrite(overwrite), m_backup(backup), m_appData(appData), m_keep(keep), m_filesCopied(0) {
@@ -17,6 +188,9 @@ void CopyWorker::startCopy() {
     m_stopRequested = false;
     m_totalFiles = 0;
     m_totalSize = 0;
+
+
+    //createShadowCopy("C:/code/hdd.png", "E:/hdd.png");
 
     countFiles(m_sourceDir);
 

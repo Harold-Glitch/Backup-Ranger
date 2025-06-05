@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(backup-ranger VERSION 1.55 LANGUAGES CXX)
+project(backup-ranger VERSION 1.56 LANGUAGES CXX)
+
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -21,7 +22,7 @@ set(PROJECT_SOURCES
         mainwindow.h
         mainwindow.ui
 )
-set(app_icon_resource_windows "${CMAKE_SOURCE_DIR}/MyApp.rc")
+set(app_icon_resource_windows "${CMAKE_SOURCE_DIR}/backup-ranger.rc")
 
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -33,10 +34,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         copyworker.h
         copyworker.cpp
 
-
         circleprogressbar.h circleprogressbar.cpp
-        hdd.png
 
+        version.rc
         resources.qrc        
         selectbackup.h selectbackup.cpp selectbackup.ui
         selectdrive.h selectdrive.cpp selectdrive.ui
@@ -61,8 +61,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(backup-ranger PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network)
-
+target_link_libraries(backup-ranger PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network vssapi)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
